@@ -47,9 +47,9 @@ class ObjectWatcher constructor(
   /**
    * References passed to [watch].
    */
-  private val watchedObjects = mutableMapOf<String, KeyedWeakReference>()
+  private val watchedObjects = mutableMapOf<String, KeyedWeakReference>()    //将要观察的reference存储起来
 
-  private val queue = ReferenceQueue<Any>()
+  private val queue = ReferenceQueue<Any>()   //WeakReference 的 引用队列ReferenceQueue 。 当弱引用引用的对象，被gc时候，会把弱引用对象，放入到queue
 
   /**
    * Returns true if there are watched objects that aren't weakly reachable, and
@@ -128,11 +128,11 @@ class ObjectWatcher constructor(
     if (!isEnabled()) {
       return
     }
-    removeWeaklyReachableObjects()
+    removeWeaklyReachableObjects()  //移除watchedReferences队列中将要被 GC 的引用
     val key = UUID.randomUUID()
         .toString()
     val watchUptimeMillis = clock.uptimeMillis()
-    val reference =
+    val reference =// 构建当前引用的弱引用对象，并关联引用队列 queue
       KeyedWeakReference(watchedObject, key, name, watchUptimeMillis, queue)
     SharkLog.d {
         "Watching " +
@@ -141,8 +141,9 @@ class ObjectWatcher constructor(
             " with key $key"
     }
 
-    watchedObjects[key] = reference
+    watchedObjects[key] = reference  // 将引用存入 watchedObjects
     checkRetainedExecutor.execute {
+      // 如果当前引用未被移除，仍在 watchedObjects  队列中，说明没有被系统GC， 需要我们手动去GC，看看是否泄漏
       moveToRetained(key)
     }
   }
@@ -175,6 +176,7 @@ class ObjectWatcher constructor(
     }
   }
 
+  //移除watchedObjects中，已经被gc的弱引用对象
   private fun removeWeaklyReachableObjects() {
     // WeakReferences are enqueued as soon as the object to which they point to becomes weakly
     // reachable. This is before finalization or garbage collection has actually happened.

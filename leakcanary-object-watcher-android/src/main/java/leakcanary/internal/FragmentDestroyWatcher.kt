@@ -51,6 +51,8 @@ internal object FragmentDestroyWatcher {
     ) {
       val watcherConstructor = Class.forName(ANDROIDX_FRAGMENT_DESTROY_WATCHER_CLASS_NAME)
           .getDeclaredConstructor(ObjectWatcher::class.java, Function0::class.java)
+      // ObjectWatcher,
+      //  private val configProvider: () -> Config
       @kotlin.Suppress("UNCHECKED_CAST")
       fragmentDestroyWatchers.add(
           watcherConstructor.newInstance(objectWatcher, configProvider) as (Activity) -> Unit
@@ -66,7 +68,7 @@ internal object FragmentDestroyWatcher {
         activity: Activity,
         savedInstanceState: Bundle?
       ) {
-        for (watcher in fragmentDestroyWatchers) {
+        for (watcher in fragmentDestroyWatchers) { //AndroidXFragmentDestroyWatcher、AndroidOFragmentDestroyWatcher
           watcher(activity)
         }
       }

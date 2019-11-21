@@ -26,7 +26,6 @@ internal class HeapDumpTrigger(
   private val heapDumper: HeapDumper,
   private val configProvider: () -> Config
 ) {
-
   private val notificationManager
     get() =
       application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -74,7 +73,7 @@ internal class HeapDumpTrigger(
     scheduleRetainedObjectCheck("found new object retained")
   }
 
-  private fun checkRetainedObjects(reason: String) {
+  private fun checkRetainedObjects(reason: String) { //检查弱引用 引用的对象是否被回收
     val config = configProvider()
     // A tick will be rescheduled when this is turned back on.
     if (!config.dumpHeap) {
@@ -82,18 +81,18 @@ internal class HeapDumpTrigger(
       return
     }
     SharkLog.d { "Checking retained object because $reason" }
-
+//先执行一次objectwatcher$$removeWeaklyReachableObjects 查看剩余弱引用 watchedObjects.size
     var retainedReferenceCount = objectWatcher.retainedObjectCount
-
+//执行gc。 线程等待100ms后，查看 剩余弱引用个数。
     if (retainedReferenceCount > 0) {
       gcTrigger.runGc()
       retainedReferenceCount = objectWatcher.retainedObjectCount
     }
-
+// 5个执行一次dumpheap，Freeze
     if (checkRetainedCount(retainedReferenceCount, config.retainedVisibleThreshold)) return
 
     if (!config.dumpHeapWhenDebugging && DebuggerControl.isDebuggerAttached) {
-      showRetainedCountWithDebuggerAttached(retainedReferenceCount)
+      showRetainedCountWithDebuggerAttached(retainedReferenceCount)//显示通知
       scheduleRetainedObjectCheck("debugger was attached", WAIT_FOR_DEBUG_MILLIS)
       SharkLog.d {
           "Not checking for leaks while the debugger is attached, will retry in $WAIT_FOR_DEBUG_MILLIS ms"
@@ -179,7 +178,7 @@ internal class HeapDumpTrigger(
       }
       return true
     }
-
+//累积5个，冻结一次界面
     if (retainedKeysCount < retainedVisibleThreshold) {
       if (applicationVisible || applicationInvisibleLessThanWatchPeriod) {
         SharkLog.d {
@@ -196,12 +195,12 @@ internal class HeapDumpTrigger(
   }
 
   private fun scheduleRetainedObjectCheck(reason: String) {
-    if (checkScheduled) {
+    if (checkScheduled) { //开始的时候，是一个新增的检查对象。跳过检查。 //5S后，跳转 HeapDumpTrigger $$ scheduleRetainedObjectCheck $$ checkScheduled = false
       SharkLog.d { "Already scheduled retained check, ignoring ($reason)" }
       return
     }
     checkScheduled = true
-    backgroundHandler.post {
+    backgroundHandler.post {//切换线程，检测
       checkScheduled = false
       checkRetainedObjects(reason)
     }
@@ -216,9 +215,9 @@ internal class HeapDumpTrigger(
       return
     }
     checkScheduled = true
-    backgroundHandler.postDelayed({
+    backgroundHandler.postDelayed({ //异步延迟5s之后，重新进行检查。
       checkScheduled = false
-      checkRetainedObjects(reason)
+      checkRetainedObjects(reason)//reason: app became invisible
     }, delayMillis)
   }
 

@@ -57,6 +57,21 @@ internal object InternalLeakCanary : (Application) -> Unit, OnObjectRetainedList
         onHeapAnalyzedListener = OnHeapAnalyzedListener {}
     )
 
+  /**
+   *
+   * private var mListener: ((Int, String) -> Unit)? = null
+
+    mListener?.invoke(position, data[position])
+
+     mListener = { position, item ->
+      Toast.makeText(this, "$position \t $item", Toast.LENGTH_SHORT).show()
+    }
+
+    mListener = fun(position: Int, item: String) {
+      Toast.makeText(this, "$position \t $item", Toast.LENGTH_SHORT).show()
+    }
+
+   */
   override fun invoke(application: Application) {
     this.application = application
 
@@ -64,18 +79,19 @@ internal object InternalLeakCanary : (Application) -> Unit, OnObjectRetainedList
 
     val heapDumper = AndroidHeapDumper(application, leakDirectoryProvider)
 
-    val gcTrigger = GcTrigger.Default
+    val gcTrigger = GcTrigger.Default // 用于手动调用 GC
 
-    val configProvider = { LeakCanary.config }
+    val configProvider = { LeakCanary.config }  // 配置项
 
     val handlerThread = HandlerThread(LEAK_CANARY_THREAD_NAME)
     handlerThread.start()
-    val backgroundHandler = Handler(handlerThread.looper)
+    val backgroundHandler = Handler(handlerThread.looper)  // 发起内存泄漏检测的线程
 
     heapDumpTrigger = HeapDumpTrigger(
         application, backgroundHandler, AppWatcher.objectWatcher, gcTrigger, heapDumper,
         configProvider
     )
+    //注册activity onstart onstop的监听
     application.registerVisibilityListener { applicationVisible ->
       this.applicationVisible = applicationVisible
       heapDumpTrigger.onApplicationVisibilityChanged(applicationVisible)
@@ -121,7 +137,8 @@ internal object InternalLeakCanary : (Application) -> Unit, OnObjectRetainedList
     if (!application.resources.getBoolean(R.bool.leak_canary_add_dynamic_shortcut)) {
       return
     }
-
+    //ShortcutManager  应用快捷方式，类似于3dTouch 。
+    //  https://blog.csdn.net/zhanggang740/article/details/78554031
     val shortcutManager = application.getSystemService(ShortcutManager::class.java)!!
     val dynamicShortcuts = shortcutManager.dynamicShortcuts
 
@@ -240,6 +257,7 @@ internal object InternalLeakCanary : (Application) -> Unit, OnObjectRetainedList
     val noOpHandler = InvocationHandler { _, _, _ ->
       // no op
     }
+    //动态代理
     return Proxy.newProxyInstance(
         javaClass.classLoader, arrayOf(javaClass), noOpHandler
     ) as T

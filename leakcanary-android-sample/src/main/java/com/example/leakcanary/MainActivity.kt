@@ -19,6 +19,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
+import leakcanary.LeakCanary
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
 
@@ -30,7 +31,6 @@ class MainActivity : Activity() {
 
     val app = application as ExampleApplication
     val leakedView = findViewById<View>(R.id.helper_text)
-
     when (Random.nextInt(4)) {
       // Leak from application class
       0 -> app.leakedViews.add(leakedView)
