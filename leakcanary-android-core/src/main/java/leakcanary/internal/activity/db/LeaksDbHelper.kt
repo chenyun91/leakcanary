@@ -10,8 +10,8 @@ internal class LeaksDbHelper(context: Context) : SQLiteOpenHelper(
 
   override fun onCreate(db: SQLiteDatabase) {
     db.execSQL(HeapAnalysisTable.create)
-    db.execSQL(LeakingInstanceTable.create)
-    db.execSQL(LeakingInstanceTable.createGroupHashIndex)
+    db.execSQL(LeakTable.create)
+    db.execSQL(LeakTable.createGroupHashIndex)
   }
 
   override fun onUpgrade(
@@ -20,12 +20,11 @@ internal class LeaksDbHelper(context: Context) : SQLiteOpenHelper(
     newVersion: Int
   ) {
     db.execSQL(HeapAnalysisTable.drop)
-    db.execSQL(LeakingInstanceTable.drop)
+    db.execSQL(LeakTable.drop)
     onCreate(db)
   }
 
   companion object {
-    // Last updated for next after 2.0-alpha-3
-    private const val VERSION = 16
+    private const val VERSION = 19
   }
 }

@@ -79,7 +79,7 @@ In your `build.gradle`:
 
 ```gradle
 dependencies {
-  implementation 'com.squareup.leakcanary:leakcanary-object-watcher-android:2.0-beta-3'
+  implementation 'com.squareup.leakcanary:leakcanary-object-watcher-android:2.0-beta-4'
 }
 ```
 
@@ -296,5 +296,41 @@ You can now add the LeakCanary dependency for that configuration:
 ```
 dependencies {
   devDebugImplementation "com.squareup.leakcanary:leakcanary-android:${version}"
+}
+```
+
+## Extracting metadata from the heap dump
+
+[LeakCanary.Config.metatadaExtractor](/leakcanary/api/leakcanary-android-core/leakcanary/-leak-canary/-config/metatada-extractor/) extracts metadata from a heap dump. The metadata is then available in `HeapAnalysisSuccess.metadata`. `LeakCanary.Config.metatadaExtractor` defaults to `AndroidMetadataExtractor` but you can replace it to extract additional metadata from the hprof.
+
+For example, if you want to include the app version name in your heap analysis reports, you need to first store it in memory (e.g. in a static field) and then you can retrieve it in `MetadataExtractor`.
+
+```kotlin
+class DebugExampleApplication : ExampleApplication() {
+
+  companion object {
+    @JvmStatic
+    lateinit var savedVersionName: String
+  }
+
+  override fun onCreate() {
+    super.onCreate()
+
+    val packageInfo = packageManager.getPackageInfo(packageName, 0)
+    savedVersionName = packageInfo.versionName
+
+    LeakCanary.config = LeakCanary.config.copy(
+        metatadaExtractor = MetadataExtractor { graph ->
+          val companionClass =
+            graph.findClassByName("com.example.DebugExampleApplication")!!
+
+          val versionNameField = companionClass["savedVersionName"]!!
+          val versionName = versionNameField.valueAsInstance!!.readAsJavaString()!!
+
+          val defaultMetadata = AndroidMetadataExtractor.extractMetadata(graph)
+
+          mapOf("App Version Name" to versionName) + defaultMetadata
+        })
+  }
 }
 ```
